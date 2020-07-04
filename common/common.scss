@@ -4,11 +4,16 @@
   [data-theme-toc] {
     display: none;
   }
+  // [guild] Use d-toc-ignore to tag interior headers and not to
+  // replace the element with a styled div. Don't apply styles.
+  /*
   .d-toc-ignore {
     font-size: $font-up-1;
     margin: 0 0 10px 0;
     font-weight: bold;
   }
+  */
+  // [/guild]
   .highlighted {
     animation: fadein 1s;
   }

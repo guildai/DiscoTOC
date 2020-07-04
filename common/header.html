@@ -259,13 +259,31 @@
 
       if (!dToc.length) return this;
       const body = $elem;
+      
+      // [guild] Work around Discourse stripping element ID: use a wrapper element
+      // with data-toc-id attr to specify the ID the wrapper's first child. Replace
+      // the wrapper with its children.
+      body.find("[data-toc-id]").each(function() {
+        const $wrapper = $(this);
+        const $target = $wrapper.children().first();
+        if (!$target.length) return;
+        $target.attr("id", $wrapper.attr("data-toc-id"));
+        $wrapper.replaceWith($wrapper.children());
+      });
+      // [/guild]
+
       body.find("div, aside, blockquote, article, details").each(function() {
         $(this)
           .children("h1,h2,h3,h4,h5,h6")
           .each(function() {
-            $(this).replaceWith(
-              `<div class="d-toc-ignore">${$(this).html()}</div>`
-            );
+            // [guild] Rather than replace header with a header-like substance,
+            // which causes untold styling problems for unsuspecting actual
+            // headers, tag the header with d-toc-ignore.
+            $(this).addClass("d-toc-ignore");
+            //$(this).replaceWith(
+            //  `<div class="d-toc-ignore">${$(this).html()}</div>`
+            //);
+            // [/guild]
           });
       });
 
