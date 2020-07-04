@@ -1,6 +1,6 @@
 {
-  "name": "DiscoTOC",
+  "name": "Guild AI DiscoTOC",
   "about_url": "",
   "component": true,
-  "license_url": "https://github.com/discourse/DiscoTOC/blob/master/LICENSE"
+  "license_url": "https://github.com/guildai/DiscoTOC/blob/master/LICENSE"
 }
