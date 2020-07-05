@@ -94,6 +94,11 @@
                 : $(this).filter(selectors);
 
               headings.each(function() {
+                // [guild] We mark headings with d-toc-ignore rather than convert
+                // them into divs. We need to check here before including headers
+                // in the TOC.
+                if ($(this).hasClass("d-toc-ignore")) return;
+                // [/guild]
                 self.nestTocItem.call(this, self, ul);
               });
             });
