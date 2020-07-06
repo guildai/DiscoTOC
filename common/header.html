@@ -70,10 +70,9 @@
       generateDtoc: function() {
         const self = this;
 
-        const primaryHeadings = $(this.options.cooked).find(
-          this.options.selectors.substr(0, this.options.selectors.indexOf(","))
-        );
-
+        const primarySelector = this.options.selectors.substr(0, this.options.selectors.indexOf(","));
+        const primaryHeadings = $(this.options.cooked).find(primarySelector);
+        
         self.element.addClass("d-toc");
 
         primaryHeadings.each(function(index) {
@@ -85,55 +84,40 @@
 
           ul.append(setUpTocItem($(this)));
           self.element.append(ul);
-
-          $(this)
-            .nextUntil(this.nodeName.toLowerCase())
-            .each(function() {
-              const headings = $(this).find(selectors).length
-                ? $(this).find(selectors)
-                : $(this).filter(selectors);
-
-              headings.each(function() {
-                // [guild] We mark headings with d-toc-ignore rather than convert
-                // them into divs. We need to check here before including headers
-                // in the TOC.
-                if ($(this).hasClass("d-toc-ignore")) return;
-                // [/guild]
-                self.nestTocItem.call(this, self, ul);
-              });
-            });
+          
+          // Subheadings are heading siblings up to but not including the next heading of the same level.
+          const subheadings = $(this).nextUntil(this.nodeName.toLowerCase()).filter(self.options.selectors);
+          var prevHeading = null;
+          subheadings.each(function() {
+            self.nestTocItem(this, prevHeading, ul);
+            prevHeading = this;
+          });
         });
       },
 
-      nestTocItem: function(self, ul) {
-        const index = $(this).index(self.options.selectors);
-        const previousHeader = $(self.options.selectors).eq(index - 1);
-        const previousTagName = previousHeader.prop("tagName").charAt(1);
+      nestTocItem: function(heading, prevHeading, container) {
+        const level = heading.nodeName.charAt(1);
+        const prevLevel = prevHeading ? prevHeading.nodeName.charAt(1) : null; 
+        
+        const tocItem = setUpTocItem($(heading));
 
-        const currentTagName = $(this)
-          .prop("tagName")
-          .charAt(1);
-
-        if (currentTagName < previousTagName) {
-          self.element
-            .find(`.d-toc-subheading[data-tag="${currentTagName}"]`)
+        if (!prevLevel || level > prevLevel) {
+          // Indent: new ul after last toc item
+          const ul = $("<ul/>", {
+            "class": "d-toc-subheading",
+            "data-tag": level
+          });
+          container.find(".d-toc-item")
             .last()
-            .append(setUpTocItem($(this)));
-        } else if (currentTagName === previousTagName) {
-          ul.find(".d-toc-item")
-            .last()
-            .after(setUpTocItem($(this)));
-        } else {
-          ul.find(".d-toc-item")
-            .last()
-            .after(
-              $("<ul/>", {
-                class: "d-toc-subheading",
-                "data-tag": currentTagName
-              })
-            )
+            .after(ul)
             .next(".d-toc-subheading")
-            .append(setUpTocItem($(this)));
+            .append(tocItem);
+        } else if (level < prevLevel) {
+          // Outdent: append to last tagged subheading for cur level
+          container.find(`.d-toc-subheading[data-tag="${level}"]`).last().append(tocItem);
+        } else {
+          // Same level: after last toc item
+          container.find(".d-toc-item").last().after(tocItem);
         }
       },
 
@@ -257,40 +241,11 @@
 
   api.decorateCooked($elem => {
     run.scheduleOnce("actions", () => {
+      if (!$elem.find("[data-theme-toc='true']").length) return;
       if ($elem.hasClass("d-editor-preview")) return;
       if (!$elem.parents("article#post_1").length) return;
-
-      const dToc = $elem.find(`[data-theme-toc="true"]`);
-
-      if (!dToc.length) return this;
-      const body = $elem;
       
-      // [guild] Work around Discourse stripping element ID: use a wrapper element
-      // with data-toc-id attr to specify the ID the wrapper's first child. Replace
-      // the wrapper with its children.
-      body.find("[data-toc-id]").each(function() {
-        const $wrapper = $(this);
-        const $target = $wrapper.children().first();
-        if (!$target.length) return;
-        $target.attr("id", $wrapper.attr("data-toc-id"));
-        $wrapper.replaceWith($wrapper.children());
-      });
-      // [/guild]
-
-      body.find("div, aside, blockquote, article, details").each(function() {
-        $(this)
-          .children("h1,h2,h3,h4,h5,h6")
-          .each(function() {
-            // [guild] Rather than replace header with a header-like substance,
-            // which causes untold styling problems for unsuspecting actual
-            // headers, tag the header with d-toc-ignore.
-            $(this).addClass("d-toc-ignore");
-            //$(this).replaceWith(
-            //  `<div class="d-toc-ignore">${$(this).html()}</div>`
-            //);
-            // [/guild]
-          });
-      });
+      const body = $elem;
 
       let dTocHeadingSelectors = "h1,h2,h3,h4,h5,h6";
       if (!body.has(">h1").length) {
@@ -308,9 +263,19 @@
           }
         }
       }
+      
+      // Work around Discourse stripping element ID: Use a wrapper element with
+      // data-toc-id attr to specify the ID the wrapper's first child. Replace
+      // the wrapper with its children.
+      body.children("[data-toc-id]").each(function() {
+        const $wrapper = $(this);
+        const $target = $wrapper.children().first();
+        if (!$target.length) return;
+        $target.attr("id", $wrapper.attr("data-toc-id"));
+        $wrapper.replaceWith($wrapper.children());
+      });
 
-      body.find(dTocHeadingSelectors).each(function() {
-        if ($(this).hasClass("d-toc-ignore")) return;
+      body.children(dTocHeadingSelectors).each(function() {
         const heading = $(this);
 
         let id = heading.attr("id") || "";
